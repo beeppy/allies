@@ -28,15 +28,38 @@ class ClassTrackerBot:
                 ''')
                 conn.commit()
 
-    def setup_handlers(self):
-        self.app.add_handler(CommandHandler('start', self.start))
-        self.app.add_handler(CommandHandler('today', self.record_today))
-        self.app.add_handler(CommandHandler('check', self.check_classes))
+def setup_handlers(self):
+    self.app.add_handler(CommandHandler('start', self.start))
+    self.app.add_handler(CommandHandler('today', self.record_today))
+    self.app.add_handler(CommandHandler('record', self.record_specific_date))
+    self.app.add_handler(CommandHandler('check', self.check_classes))
+
+async def record_specific_date(self, update: Update, context: CallbackContext):
+    try:
+        input_date = ' '.join(context.args)
+        class_date = datetime.strptime(input_date, '%Y-%m-%d').date()
+        
+        user_id = update.effective_user.id
+        username = update.effective_user.username or update.effective_user.first_name
+        
+        with self.get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'INSERT INTO class_attendance (user_id, username, class_date) VALUES (%s, %s, %s)',
+                    (user_id, username, class_date)
+                )
+                conn.commit()
+        
+        await update.message.reply_text(f"Recorded class for {class_date}")
+        
+    except (ValueError, IndexError):
+        await update.message.reply_text("Please provide a date in YYYY-MM-DD format\nExample: /record 2024-11-27")
 
     async def start(self, update: Update, context: CallbackContext):
         await update.message.reply_text(
             "Commands:\n"
             "/today - Record today's class\n"
+            "/record - Record a class with date (YYYY-MM-DD)\n"
             "/check - See all recorded classes"
         )
 
@@ -79,7 +102,7 @@ class ClassTrackerBot:
         
         if user_classes and user_classes[0]:
             date_list = [d.strftime('%Y-%m-%d') for d in user_classes[0]]
-            message += f"Your classes:\n{', '.join(date_list)}\n\n"
+            message += f"Your classes:\n{'\n'.join(date_list)}\n\n"
             
         if other_classes:
             message += "Others:\n"
