@@ -109,19 +109,23 @@ class ClassTrackerBot:
         username = update.effective_user.username or update.effective_user.first_name
         today = date.today()
         
-        with self.get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    'INSERT INTO class_attendance (user_id, username, class_date) VALUES (%s, %s, %s)',
-                    (user_id, username, today)
-                )
-                conn.commit()
-        
-        await update.message.reply_text(f"Recorded class for today ({today})")
+        try: 
+            with self.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        'INSERT INTO class_attendance (user_id, username, class_date) VALUES (%s, %s, %s)',
+                        (user_id, username, today)
+                    )
+                    conn.commit()
+            
+            await update.message.reply_text(f"Recorded class for today ({today})")
+        except Exception as e:
+            await update.message.reply_text(f"Error checking classes: {e}")
+            
 
     async def check_classes(self, update: Update, context: CallbackContext):
-        with self.get_db_connection() as conn:
-            try:
+        try:
+            with self.get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute('''
                         WITH stats AS (
@@ -137,10 +141,10 @@ class ClassTrackerBot:
                         ORDER BY user_count DESC
                     ''')
                     results = cur.fetchall()
-                    print(results)
-            finally: 
-                print("check sql error")
-                
+        except Exception as e:
+            await update.message.reply_text(f"Error checking classes: {e}")
+            return
+
         if not results:
             await update.message.reply_text("No classes recorded")
             return
@@ -150,7 +154,6 @@ class ClassTrackerBot:
         message = f"Total classes taken: {total_classes}\nCredits left: {credits_left}\n"
 
         for _, username, dates in results:
-            
             date_list = [d.strftime('%Y-%m-%d') for d in dates]
             count = len(date_list)
             message += f"\n{username}'s classes taken: {count}\n"
