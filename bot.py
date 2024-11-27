@@ -153,11 +153,6 @@ class ClassTrackerBot:
         await update.message.reply_text(message.strip())
 
 
-    async def webhook_handler(self):
-        if request.method == "POST":
-            await self.app.update_queue.put(Update.de_json(request.get_json(), self.app.bot))
-        return "OK"
-
     async def run(self):
         if self.is_running:
             return
@@ -165,32 +160,15 @@ class ClassTrackerBot:
             self.is_running = True
             print("Bot starting with webhook...")
             webhook_url = os.environ.get('WEBHOOK_URL')
-            
-            # Await the webhook setup
             await self.app.bot.delete_webhook()
             await self.app.bot.set_webhook(webhook_url)
             
-            port = int(os.environ.get('PORT', 10000))
-            self.flask_app.run(host='0.0.0.0', port=port)
+            # Don't run Flask directly
+            return self.flask_app
         finally:
             self.is_running = False
 
 if __name__ == '__main__':
     token = os.environ.get('TELEGRAM_BOT_TOKEN')
     bot = ClassTrackerBot(token)
-    asyncio.run(bot.run())
-
-#     def run(self):
-#         if self.is_running:
-#             return
-#         try:
-#             self.is_running = True
-#             print("Bot starting...")
-#             self.app.run_polling(drop_pending_updates=True)
-#         finally:
-#             self.is_running = False
-
-# if __name__ == '__main__':
-#     token = os.environ.get('TELEGRAM_BOT_TOKEN')
-#     bot = ClassTrackerBot(token)
-#     bot.run()
+    app = asyncio.run(bot.run())
