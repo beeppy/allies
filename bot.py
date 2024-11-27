@@ -1,3 +1,4 @@
+
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 from datetime import date
@@ -6,7 +7,7 @@ import psycopg2
 
 class ClassTrackerBot:
     def __init__(self, token):
-        self.app = Application.builder().token(token).drop_pending_updates().build()
+        self.app = Application.builder().token(token).build()
         self.database_url = os.environ.get('DATABASE_URL')
         self.setup_database()
         self.setup_handlers()
@@ -59,7 +60,6 @@ class ClassTrackerBot:
         
         with self.get_db_connection() as conn:
             with conn.cursor() as cur:
-                # Get current user's classes
                 cur.execute('''
                     SELECT array_agg(class_date ORDER BY class_date) as dates
                     FROM class_attendance
@@ -67,7 +67,6 @@ class ClassTrackerBot:
                 ''', (current_user_id,))
                 user_classes = cur.fetchone()
                 
-                # Get other users' classes
                 cur.execute('''
                     SELECT username, array_agg(class_date ORDER BY class_date) as dates
                     FROM class_attendance
@@ -78,12 +77,10 @@ class ClassTrackerBot:
 
         message = "Classes taken:\n\n"
         
-        # Show current user's classes
         if user_classes and user_classes[0]:
             date_list = [d.strftime('%Y-%m-%d') for d in user_classes[0]]
             message += f"Your classes:\n{', '.join(date_list)}\n\n"
             
-        # Show other users' classes
         if other_classes:
             message += "Others:\n"
             for username, dates in other_classes:
@@ -97,7 +94,7 @@ class ClassTrackerBot:
 
     def run(self):
         print("Bot starting...")
-        self.app.run_polling(allowed_updates=Update.ALL_TYPES)
+        self.app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     token = os.environ.get('TELEGRAM_BOT_TOKEN')
