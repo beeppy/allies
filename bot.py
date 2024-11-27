@@ -4,6 +4,7 @@ from datetime import date, datetime
 import os
 import psycopg2
 from flask import Flask, request
+import asyncio
 
 
 class ClassTrackerBot:
@@ -157,23 +158,27 @@ class ClassTrackerBot:
             await self.app.update_queue.put(Update.de_json(request.get_json(), self.app.bot))
         return "OK"
 
-    def run(self):
+    async def run(self):
         if self.is_running:
             return
         try:
             self.is_running = True
             print("Bot starting with webhook...")
             webhook_url = os.environ.get('WEBHOOK_URL')
-            self.app.bot.set_webhook(webhook_url)
-            port = int(os.environ.get('PORT', 8080))
+            
+            # Await the webhook setup
+            await self.app.bot.delete_webhook()
+            await self.app.bot.set_webhook(webhook_url)
+            
+            port = int(os.environ.get('PORT', 10000))
             self.flask_app.run(host='0.0.0.0', port=port)
         finally:
-            self.is_running = False   
+            self.is_running = False
 
 if __name__ == '__main__':
     token = os.environ.get('TELEGRAM_BOT_TOKEN')
     bot = ClassTrackerBot(token)
-    bot.run()
+    asyncio.run(bot.run())
 
 #     def run(self):
 #         if self.is_running:
