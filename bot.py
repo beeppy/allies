@@ -105,11 +105,11 @@ class ClassTrackerBot:
         )
 
     async def record_today(self, update: Update, context: CallbackContext):
-        user_id = update.effective_user.id
-        username = update.effective_user.username or update.effective_user.first_name
-        today = date.today()
-        
-        try: 
+        try:
+            user_id = update.effective_user.id
+            username = update.effective_user.username or update.effective_user.first_name
+            today = date.today()
+            
             with self.get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
@@ -119,8 +119,10 @@ class ClassTrackerBot:
                     conn.commit()
             
             await update.message.reply_text(f"Recorded class for today ({today})")
+        except RuntimeError as e:
+            await update.message.reply_text(f"Error recording today's class: {e}")
         except Exception as e:
-            await update.message.reply_text(f"Error checking classes: {e}")
+            await update.message.reply_text(f"Unexpected error: {e}")
             
 
     async def check_classes(self, update: Update, context: CallbackContext):
@@ -141,8 +143,11 @@ class ClassTrackerBot:
                         ORDER BY user_count DESC
                     ''')
                     results = cur.fetchall()
-        except Exception as e:
+        except RuntimeError as e:
             await update.message.reply_text(f"Error checking classes: {e}")
+            return
+        except Exception as e:
+            await update.message.reply_text(f"Unexpected error: {e}")
             return
 
         if not results:
