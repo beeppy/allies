@@ -163,12 +163,11 @@ class ClassTrackerBot:
             return
         try:
             self.is_running = True
+            await self.app.initialize()
             print("Bot starting with webhook...")
             webhook_url = os.environ.get('WEBHOOK_URL')
             await self.app.bot.delete_webhook()
             await self.app.bot.set_webhook(webhook_url)
-            
-            # Don't run Flask directly
             return self.flask_app
         finally:
             self.is_running = False
