@@ -46,13 +46,14 @@ class ClassTrackerBot:
         print(f'Update {update} caused error {context.error}')
 
     async def record_specific_date(self, update: Update, context: CallbackContext):
+        await update.message.reply_text(f"record_specific_date")
         try:
             input_date = ' '.join(context.args)
             class_date = datetime.strptime(input_date, '%Y-%m-%d').date()
             
             user_id = update.effective_user.id
             username = update.effective_user.username or update.effective_user.first_name
-            
+            await update.message.reply_text(f"record_specific_date 2")
             with self.get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
@@ -68,12 +69,13 @@ class ClassTrackerBot:
 
 
     async def remove_date(self, update: Update, context: CallbackContext):
+        await update.message.reply_text(f"remove_date")
         try:
             input_date = ' '.join(context.args)
             class_date = datetime.strptime(input_date, '%Y-%m-%d').date()
             
             user_id = update.effective_user.id
-            
+            await update.message.reply_text(f"remove_date 2")
             with self.get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
@@ -81,7 +83,9 @@ class ClassTrackerBot:
                         (user_id, class_date)
                     )
                     deleted_rows = cur.rowcount
+                    await update.message.reply_text(f"remove_date 3")
                     conn.commit()
+                    await update.message.reply_text(f"remove_date 4")
                     print(deleted_rows)
             
             if deleted_rows > 0:
@@ -105,18 +109,21 @@ class ClassTrackerBot:
         )
 
     async def record_today(self, update: Update, context: CallbackContext):
+        await update.message.reply_text(f"record_today")
         try:
             user_id = update.effective_user.id
             username = update.effective_user.username or update.effective_user.first_name
             today = date.today()
-            
+            await update.message.reply_text(f"record_today 2")
             with self.get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
                         'INSERT INTO class_attendance (user_id, username, class_date) VALUES (%s, %s, %s)',
                         (user_id, username, today)
                     )
+                    await update.message.reply_text(f"record_today 3")
                     conn.commit()
+                    await update.message.reply_text(f"record_today 4")
             
             await update.message.reply_text(f"Recorded class for today ({today})")
         except RuntimeError as e:
@@ -126,6 +133,7 @@ class ClassTrackerBot:
             
 
     async def check_classes(self, update: Update, context: CallbackContext):
+        await update.message.reply_text(f"check classes")
         try:
             with self.get_db_connection() as conn:
                 with conn.cursor() as cur:
@@ -142,7 +150,9 @@ class ClassTrackerBot:
                         FROM stats
                         ORDER BY user_count DESC
                     ''')
+                    await update.message.reply_text(f"check_classes 2")
                     results = cur.fetchall()
+                    await update.message.reply_text(f"check_classes 3")
         except RuntimeError as e:
             await update.message.reply_text(f"Error checking classes: {e}")
             return
@@ -157,7 +167,7 @@ class ClassTrackerBot:
         total_classes = results[0][0]
         credits_left = 100 - total_classes
         message = f"Total classes taken: {total_classes}\nCredits left: {credits_left}\n"
-
+        await update.message.reply_text(f"check_classes 4")
         for _, username, dates in results:
             date_list = [d.strftime('%Y-%m-%d') for d in dates]
             count = len(date_list)
