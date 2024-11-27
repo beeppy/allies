@@ -87,7 +87,8 @@ class ClassTrackerBot:
         await update.message.reply_text(
             "Commands:\n"
             "/today - Record today's class\n"
-            "/record - Record a class with date (YYYY-MM-DD)\n"
+            "/record YYYY-MM-DD - Record a class with date (YYYY-MM-DD)\n"
+            "/remove YYYY-MM-DD - Remove a class with date (YYYY-MM-DD)\n"
             "/check - See all recorded classes"
         )
 
