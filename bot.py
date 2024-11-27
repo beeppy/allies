@@ -152,6 +152,11 @@ class ClassTrackerBot:
 
         await update.message.reply_text(message.strip())
 
+    async def webhook_handler(self):
+        data = request.get_json()
+        update = Update.de_json(data, self.app.bot)
+        await self.app.process_update(update)
+        return 'OK'
 
     async def run(self):
         if self.is_running:
@@ -168,7 +173,7 @@ class ClassTrackerBot:
         finally:
             self.is_running = False
 
-if __name__ == '__main__':
-    token = os.environ.get('TELEGRAM_BOT_TOKEN')
-    bot = ClassTrackerBot(token)
-    app = asyncio.run(bot.run())
+# Add this line outside the if block
+token = os.environ.get('TELEGRAM_BOT_TOKEN')
+bot = ClassTrackerBot(token)
+app = asyncio.run(bot.run())
