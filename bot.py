@@ -1,4 +1,3 @@
-
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 from datetime import date, datetime
@@ -143,9 +142,11 @@ class ClassTrackerBot:
         credits_left = 100 - total_classes
         message = f"Total classes taken: {total_classes}\nCredits left: {credits_left}\n"
 
-        for _, username, dates, count in results:
-            message += f"\n{username}'s classes taken: {count}\n"
+        for _, username, dates in results:
+            
             date_list = [d.strftime('%Y-%m-%d') for d in dates]
+            count = len(date_list)
+            message += f"\n{username}'s classes taken: {count}\n"
             message += '\n'.join(date_list) + '\n'
 
         await update.message.reply_text(message.strip())
