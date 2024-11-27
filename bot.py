@@ -11,6 +11,7 @@ class ClassTrackerBot:
         self.database_url = os.environ.get('DATABASE_URL')
         self.setup_database()
         self.setup_handlers()
+        self.is_running = False
 
     def get_db_connection(self):
         return psycopg2.connect(self.database_url)
@@ -111,28 +112,67 @@ class ClassTrackerBot:
         with self.get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute('''
-                    SELECT username, array_agg(class_date ORDER BY class_date) as dates
-                    FROM class_attendance
-                    GROUP BY username
+                    WITH stats AS (
+                        SELECT COUNT(*) as total_classes,
+                            username,
+                            array_agg(class_date ORDER BY class_date) as dates,
+                            COUNT(*) OVER (PARTITION BY username) as user_count
+                        FROM class_attendance
+                        GROUP BY username
+                    )
+                    SELECT total_classes, username, dates, user_count 
+                    FROM stats
+                    ORDER BY user_count DESC
                 ''')
-                all_classes = cur.fetchall()
-
-        if not all_classes:
+                results = cur.fetchall()
+                
+        if not results:
             await update.message.reply_text("No classes recorded")
             return
 
-        message = ""
-        for username, dates in all_classes:
-            message += f"\n{username}'s classes taken:\n"
-            if dates:
-                date_list = [d.strftime('%Y-%m-%d') for d in dates]
-                message += '\n'.join(date_list) + '\n'
+        total_classes = results[0][0]
+        credits_left = 100 - total_classes
+        message = f"Total classes taken: {total_classes}\nCredits left: {credits_left}\n"
+
+        for _, username, dates, count in results:
+            message += f"\n{username}'s classes taken: {count}\n"
+            date_list = [d.strftime('%Y-%m-%d') for d in dates]
+            message += '\n'.join(date_list) + '\n'
 
         await update.message.reply_text(message.strip())
 
+    # async def check_classes(self, update: Update, context: CallbackContext):
+    #     with self.get_db_connection() as conn:
+    #         with conn.cursor() as cur:
+    #             cur.execute('''
+    #                 SELECT username, array_agg(class_date ORDER BY class_date) as dates
+    #                 FROM class_attendance
+    #                 GROUP BY username
+    #             ''')
+    #             all_classes = cur.fetchall()
+
+    #     if not all_classes:
+    #         await update.message.reply_text("No classes recorded")
+    #         return
+
+    #     message = ""
+    #     for username, dates in all_classes:
+    #         message += f"\n{username}'s classes taken:\n"
+    #         if dates:
+    #             date_list = [d.strftime('%Y-%m-%d') for d in dates]
+    #             message += '\n'.join(date_list) + '\n'
+
+    #     await update.message.reply_text(message.strip())
+
     def run(self):
-        print("Bot starting...")
-        self.app.run_polling(drop_pending_updates=True)
+        if self.is_running:
+            return
+        try:
+            self.is_running = True
+            print("Bot starting...")
+            self.app.run_polling(drop_pending_updates=True)
+        finally:
+            self.is_running = False
 
 if __name__ == '__main__':
     token = os.environ.get('TELEGRAM_BOT_TOKEN')
