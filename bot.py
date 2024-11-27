@@ -82,6 +82,7 @@ class ClassTrackerBot:
                     )
                     deleted_rows = cur.rowcount
                     conn.commit()
+                    print(deleted_rows)
             
             if deleted_rows > 0:
                 await update.message.reply_text(f"Removed class record for {class_date}")
@@ -89,6 +90,7 @@ class ClassTrackerBot:
                 await update.message.reply_text(f"No class record found for {class_date}")
                 
         except (ValueError, IndexError):
+            print("remove error")
             await update.message.reply_text("Please provide a date in YYYY-MM-DD format\nExample: /remove 2024-11-27")
 
     
@@ -119,21 +121,25 @@ class ClassTrackerBot:
 
     async def check_classes(self, update: Update, context: CallbackContext):
         with self.get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute('''
-                    WITH stats AS (
-                        SELECT COUNT(*) as total_classes,
-                            username,
-                            array_agg(class_date ORDER BY class_date) as dates,
-                            COUNT(*) OVER (PARTITION BY username) as user_count
-                        FROM class_attendance
-                        GROUP BY username
-                    )
-                    SELECT total_classes, username, dates, user_count 
-                    FROM stats
-                    ORDER BY user_count DESC
-                ''')
-                results = cur.fetchall()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute('''
+                        WITH stats AS (
+                            SELECT COUNT(*) as total_classes,
+                                username,
+                                array_agg(class_date ORDER BY class_date) as dates,
+                                COUNT(*) OVER (PARTITION BY username) as user_count
+                            FROM class_attendance
+                            GROUP BY username
+                        )
+                        SELECT total_classes, username, dates, user_count 
+                        FROM stats
+                        ORDER BY user_count DESC
+                    ''')
+                    results = cur.fetchall()
+                    print(results)
+            finally: 
+                print("check sql error")
                 
         if not results:
             await update.message.reply_text("No classes recorded")
