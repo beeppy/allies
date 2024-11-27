@@ -6,7 +6,7 @@ import psycopg2
 
 class ClassTrackerBot:
     def __init__(self, token):
-        self.app = Application.builder().token(token).build()
+        self.app = Application.builder().token(token).drop_pending_updates().build()
         self.database_url = os.environ.get('DATABASE_URL')
         self.setup_database()
         self.setup_handlers()
@@ -97,7 +97,7 @@ class ClassTrackerBot:
 
     def run(self):
         print("Bot starting...")
-        self.app.run_polling()
+        self.app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     token = os.environ.get('TELEGRAM_BOT_TOKEN')
