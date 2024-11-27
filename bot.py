@@ -78,42 +78,30 @@ async def record_specific_date(self, update: Update, context: CallbackContext):
         
         await update.message.reply_text(f"Recorded class for today ({today})")
 
+
+
     async def check_classes(self, update: Update, context: CallbackContext):
-        current_user_id = update.effective_user.id
-        
         with self.get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute('''
-                    SELECT array_agg(class_date ORDER BY class_date) as dates
-                    FROM class_attendance
-                    WHERE user_id = %s
-                ''', (current_user_id,))
-                user_classes = cur.fetchone()
-                
-                cur.execute('''
                     SELECT username, array_agg(class_date ORDER BY class_date) as dates
                     FROM class_attendance
-                    WHERE user_id != %s
                     GROUP BY username
-                ''', (current_user_id,))
-                other_classes = cur.fetchall()
+                ''')
+                all_classes = cur.fetchall()
 
-        message = "Classes taken:\n\n"
-        
-        if user_classes and user_classes[0]:
-            date_list = [d.strftime('%Y-%m-%d') for d in user_classes[0]]
-            message += f"Your classes:\n{'\n'.join(date_list)}\n\n"
-            
-        if other_classes:
-            message += "Others:\n"
-            for username, dates in other_classes:
+        if not all_classes:
+            await update.message.reply_text("No classes recorded")
+            return
+
+        message = ""
+        for username, dates in all_classes:
+            message += f"\n{username}'s classes taken:\n"
+            if dates:
                 date_list = [d.strftime('%Y-%m-%d') for d in dates]
-                message += f"{username}: {', '.join(date_list)}\n"
-        
-        if not user_classes[0] and not other_classes:
-            message = "No classes recorded"
-            
-        await update.message.reply_text(message)
+                message += '\n'.join(date_list) + '\n'
+
+        await update.message.reply_text(message.strip())
 
     def run(self):
         print("Bot starting...")
