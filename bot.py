@@ -35,7 +35,10 @@ class SimpleBot:
         print("Bot is starting...")
         self.app.run_polling()
 
+
 if __name__ == '__main__':
-    # Replace 'YOUR_BOT_TOKEN' with the token from BotFather
-    bot = SimpleBot('YOUR_BOT_TOKEN')
+    import os
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    bot = SimpleBot(token)
     bot.run()
+    
