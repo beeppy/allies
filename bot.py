@@ -33,6 +33,7 @@ class ClassTrackerBot:
         self.app.add_handler(CommandHandler('today', self.record_today))
         self.app.add_handler(CommandHandler('record', self.record_specific_date))
         self.app.add_handler(CommandHandler('check', self.check_classes))
+        self.app.add_handler(CommandHandler('remove', self.remove_date))
 
     async def record_specific_date(self, update: Update, context: CallbackContext):
         try:
@@ -55,6 +56,33 @@ class ClassTrackerBot:
         except (ValueError, IndexError):
             await update.message.reply_text("Please provide a date in YYYY-MM-DD format\nExample: /record 2024-11-27")
 
+
+    async def remove_date(self, update: Update, context: CallbackContext):
+        try:
+            input_date = ' '.join(context.args)
+            class_date = datetime.strptime(input_date, '%Y-%m-%d').date()
+            
+            user_id = update.effective_user.id
+            
+            with self.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        'DELETE FROM class_attendance WHERE user_id = %s AND class_date = %s',
+                        (user_id, class_date)
+                    )
+                    deleted_rows = cur.rowcount
+                    conn.commit()
+            
+            if deleted_rows > 0:
+                await update.message.reply_text(f"Removed class record for {class_date}")
+            else:
+                await update.message.reply_text(f"No class record found for {class_date}")
+                
+        except (ValueError, IndexError):
+            await update.message.reply_text("Please provide a date in YYYY-MM-DD format\nExample: /remove 2024-11-27")
+
+    
+    
     async def start(self, update: Update, context: CallbackContext):
         await update.message.reply_text(
             "Commands:\n"
