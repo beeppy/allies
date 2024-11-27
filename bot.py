@@ -4,6 +4,8 @@ from telegram.ext import Application, CommandHandler, CallbackContext
 from datetime import date, datetime
 import os
 import psycopg2
+from flask import Flask, request
+
 
 class ClassTrackerBot:
     def __init__(self, token):
@@ -12,6 +14,9 @@ class ClassTrackerBot:
         self.setup_database()
         self.setup_handlers()
         self.is_running = False
+        self.flask_app = Flask(__name__)
+        self.flask_app.route('/webhook', methods=['POST'])(self.webhook_handler)
+        
 
     def get_db_connection(self):
         return psycopg2.connect(self.database_url)
@@ -35,6 +40,10 @@ class ClassTrackerBot:
         self.app.add_handler(CommandHandler('record', self.record_specific_date))
         self.app.add_handler(CommandHandler('check', self.check_classes))
         self.app.add_handler(CommandHandler('remove', self.remove_date))
+        self.app.add_error_handler(self.error_handler)
+
+    async def error_handler(self, update: Update, context: CallbackContext) -> None:
+        print(f'Update {update} caused error {context.error}')
 
     async def record_specific_date(self, update: Update, context: CallbackContext):
         try:
@@ -141,40 +150,41 @@ class ClassTrackerBot:
 
         await update.message.reply_text(message.strip())
 
-    # async def check_classes(self, update: Update, context: CallbackContext):
-    #     with self.get_db_connection() as conn:
-    #         with conn.cursor() as cur:
-    #             cur.execute('''
-    #                 SELECT username, array_agg(class_date ORDER BY class_date) as dates
-    #                 FROM class_attendance
-    #                 GROUP BY username
-    #             ''')
-    #             all_classes = cur.fetchall()
 
-    #     if not all_classes:
-    #         await update.message.reply_text("No classes recorded")
-    #         return
-
-    #     message = ""
-    #     for username, dates in all_classes:
-    #         message += f"\n{username}'s classes taken:\n"
-    #         if dates:
-    #             date_list = [d.strftime('%Y-%m-%d') for d in dates]
-    #             message += '\n'.join(date_list) + '\n'
-
-    #     await update.message.reply_text(message.strip())
+    async def webhook_handler(self):
+        if request.method == "POST":
+            await self.app.update_queue.put(Update.de_json(request.get_json(), self.app.bot))
+        return "OK"
 
     def run(self):
         if self.is_running:
             return
         try:
             self.is_running = True
-            print("Bot starting...")
-            self.app.run_polling(drop_pending_updates=True)
+            print("Bot starting with webhook...")
+            webhook_url = os.environ.get('WEBHOOK_URL')
+            self.app.bot.set_webhook(webhook_url)
+            port = int(os.environ.get('PORT', 8080))
+            self.flask_app.run(host='0.0.0.0', port=port)
         finally:
-            self.is_running = False
+            self.is_running = False   
 
 if __name__ == '__main__':
     token = os.environ.get('TELEGRAM_BOT_TOKEN')
     bot = ClassTrackerBot(token)
     bot.run()
+
+#     def run(self):
+#         if self.is_running:
+#             return
+#         try:
+#             self.is_running = True
+#             print("Bot starting...")
+#             self.app.run_polling(drop_pending_updates=True)
+#         finally:
+#             self.is_running = False
+
+# if __name__ == '__main__':
+#     token = os.environ.get('TELEGRAM_BOT_TOKEN')
+#     bot = ClassTrackerBot(token)
+#     bot.run()
