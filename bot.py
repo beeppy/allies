@@ -1,7 +1,7 @@
 
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
-from datetime import date
+from datetime import date, datetime
 import os
 import psycopg2
 
@@ -28,32 +28,32 @@ class ClassTrackerBot:
                 ''')
                 conn.commit()
 
-def setup_handlers(self):
-    self.app.add_handler(CommandHandler('start', self.start))
-    self.app.add_handler(CommandHandler('today', self.record_today))
-    self.app.add_handler(CommandHandler('record', self.record_specific_date))
-    self.app.add_handler(CommandHandler('check', self.check_classes))
+    def setup_handlers(self):
+        self.app.add_handler(CommandHandler('start', self.start))
+        self.app.add_handler(CommandHandler('today', self.record_today))
+        self.app.add_handler(CommandHandler('record', self.record_specific_date))
+        self.app.add_handler(CommandHandler('check', self.check_classes))
 
-async def record_specific_date(self, update: Update, context: CallbackContext):
-    try:
-        input_date = ' '.join(context.args)
-        class_date = datetime.strptime(input_date, '%Y-%m-%d').date()
-        
-        user_id = update.effective_user.id
-        username = update.effective_user.username or update.effective_user.first_name
-        
-        with self.get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    'INSERT INTO class_attendance (user_id, username, class_date) VALUES (%s, %s, %s)',
-                    (user_id, username, class_date)
-                )
-                conn.commit()
-        
-        await update.message.reply_text(f"Recorded class for {class_date}")
-        
-    except (ValueError, IndexError):
-        await update.message.reply_text("Please provide a date in YYYY-MM-DD format\nExample: /record 2024-11-27")
+    async def record_specific_date(self, update: Update, context: CallbackContext):
+        try:
+            input_date = ' '.join(context.args)
+            class_date = datetime.strptime(input_date, '%Y-%m-%d').date()
+            
+            user_id = update.effective_user.id
+            username = update.effective_user.username or update.effective_user.first_name
+            
+            with self.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        'INSERT INTO class_attendance (user_id, username, class_date) VALUES (%s, %s, %s)',
+                        (user_id, username, class_date)
+                    )
+                    conn.commit()
+            
+            await update.message.reply_text(f"Recorded class for {class_date}")
+            
+        except (ValueError, IndexError):
+            await update.message.reply_text("Please provide a date in YYYY-MM-DD format\nExample: /record 2024-11-27")
 
     async def start(self, update: Update, context: CallbackContext):
         await update.message.reply_text(
@@ -77,8 +77,6 @@ async def record_specific_date(self, update: Update, context: CallbackContext):
                 conn.commit()
         
         await update.message.reply_text(f"Recorded class for today ({today})")
-
-
 
     async def check_classes(self, update: Update, context: CallbackContext):
         with self.get_db_connection() as conn:
@@ -111,4 +109,3 @@ if __name__ == '__main__':
     token = os.environ.get('TELEGRAM_BOT_TOKEN')
     bot = ClassTrackerBot(token)
     bot.run()
-
